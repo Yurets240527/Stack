@@ -2,6 +2,9 @@
 #include <assert.h>
 #include <stdlib.h>
 
+typedef double StackElem;
+#define STACK_ELEM_FMT "%lg"
+
 #define STACK_DUMP(stk) StackDump(&stk, __FILE__, __LINE__, __func__)
 
 enum errors
@@ -16,14 +19,14 @@ struct stack
 {
     size_t size;
     size_t capacity;
-    double *data;
+    StackElem *data;
 };
 
 int InitStack(stack *stk, size_t capacity);
 
-int StackPush(stack *stk, double value);
+int StackPush(stack *stk, StackElem value);
 
-double StackPop(stack *stk, int* err);
+StackElem StackPop(stack *stk, int* err);
 
 int StackDestroy(stack *stk);
 
@@ -47,14 +50,14 @@ int main()
     StackPush(&stk, 20);
     StackPush(&stk, 30);
 
-    printf("%lg\n", StackPop(&stk, &err));
+    printf(STACK_ELEM_FMT "\n", StackPop(&stk, &err));
     StackPush(&stk, 67);
 
     for (int i = 0; i<100; i++) StackPush(&stk, i);
 
-    printf("%lg\n", StackPop(&stk, &err));
+    printf(STACK_ELEM_FMT "\n", StackPop(&stk, &err));
     if(err > 0) PrintError(err);
-    printf("%lg\n", StackPop(&stk, &err));
+    printf(STACK_ELEM_FMT "\n", StackPop(&stk, &err));
     if(err > 0) PrintError(err);
 
     err = ErrorCheck(&stk);
@@ -74,7 +77,7 @@ int InitStack(stack *stk, size_t capacity)
 
     if (!capacity) return MEMORY_ERROR;
 
-    stk->data = (double *) calloc(capacity, sizeof(double));
+    stk->data = (StackElem *) calloc(capacity, sizeof(StackElem));
 
     if (!stk->data) return MEMORY_ERROR;
 
@@ -83,7 +86,7 @@ int InitStack(stack *stk, size_t capacity)
     return OK;
 }
 
-int StackPush(stack *stk, double value)
+int StackPush(stack *stk, StackElem value)
 {
     if (!stk) return NULL_PTR;
 
@@ -93,7 +96,7 @@ int StackPush(stack *stk, double value)
     return OK;
 }
 
-double StackPop(stack *stk, int* err)
+StackElem StackPop(stack *stk, int* err)
 {
     if (!stk) *err = NULL_PTR;
     if (stk->size <= 0)
@@ -101,7 +104,7 @@ double StackPop(stack *stk, int* err)
         *err = STACK_UNDERFLOW;
         return *err;
     }
-    double pop_elem = stk->data[--stk->size];
+    StackElem pop_elem = stk->data[--stk->size];
     stk->data[stk->size] = 0;
 
     return pop_elem;
@@ -121,7 +124,7 @@ int StackResize(stack *stk)
     if (!stk) return NULL_PTR;
 
     printf("Changed capacity from %d to ", stk->capacity);
-    stk->data = (double *) realloc(stk->data, (stk->capacity) * 2 * sizeof(double));
+    stk->data = (StackElem *) realloc(stk->data, (stk->capacity) * 2 * sizeof(StackElem));
 
     if (!stk->data) return MEMORY_ERROR;
 
@@ -176,10 +179,10 @@ int StackDump(stack *stk, const char *file, int line, const char *func)
         return NULL_PTR;
     }
 
-    printf("  stk address : %p\n", (const void *)stk);
-    printf("  size        : %zu\n", stk->size);
-    printf("  capacity    : %zu\n", stk->capacity);
-    printf("  data ptr    : %p\n", (const void *)stk->data);
+    printf("  stk address : %p\n", stk);
+    printf("  size        : %d\n", stk->size);
+    printf("  capacity    : %d\n", stk->capacity);
+    printf("  data ptr    : %p\n", stk->data);
 
     printf("  --- checks ---\n");
     if (!stk->data)
@@ -207,7 +210,7 @@ int StackDump(stack *stk, const char *file, int line, const char *func)
         printf("  --- data[0..%d] ---\n", stk->capacity - 1);
         for (size_t i = 0; i < stk->capacity; i++)
         {
-            const char *is_used;
+            const char *is_used = NULL;
             if (i + 1 == stk->size)
                 is_used = "<- top";
             else if (i < stk->size)
@@ -215,12 +218,12 @@ int StackDump(stack *stk, const char *file, int line, const char *func)
             else
                 is_used = "unused";
 
-            printf("    data[%3d] = %-12lg  (%s)\n",
+            printf("    data[%3d] = " STACK_ELEM_FMT "  (%s)\n",
                    i, stk->data[i], is_used);
         }
     }
 
     printf("  top pointer : data + size = %p\n",
-           (const void *)(stk->data + stk->size));
+           (stk->data + stk->size));
     printf("==================================================\n\n");
 }
