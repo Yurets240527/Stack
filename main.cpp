@@ -12,7 +12,7 @@ typedef double StackElem;
 #define  LEFT_PETUSHARA 3802
 #define RIGHT_PETUSHARA 3565
 
-enum errors
+enum Errors
 {
     OK = 0,
     NULL_PTR = 1,
@@ -21,7 +21,7 @@ enum errors
     KILLED_PETUSHARA = 4,
 };
 
-struct stack
+struct stack //TODO: ERROR_CODE, INFO EBOUT STACK
 {
     size_t size;
     size_t capacity;
@@ -31,19 +31,19 @@ struct stack
     StackElem *right_petushara;
 };
 
-int InitStack(stack *stk, size_t capacity);
+Errors InitStack(stack *stk, size_t capacity);
 
-int StackPush(stack *stk, StackElem value);
+Errors StackPush(stack *stk, StackElem value);
 
 StackElem StackPop(stack *stk, int* err);
 
-int StackDestroy(stack *stk);
+Errors StackDestroy(stack *stk);
 
-int StackResize(stack *stk);
+Errors StackResize(stack *stk);
 
 int PrintError(int err);
 
-int ErrorCheck(stack *stk);
+Errors StackVerifier(stack *stk);
 
 int StackDump(stack *stk, const char *file, int line, const char *func);
 
@@ -70,7 +70,7 @@ int main()
     printf(STACK_ELEM_FMT "\n", StackPop(&stk, &err));
     if(err > 0) PrintError(err);
 
-    err = ErrorCheck(&stk);
+    err = StackVerifier(&stk);
     if(err > 0) PrintError(err);
 
     STACK_DUMP(stk);
@@ -79,8 +79,10 @@ int main()
 }
 
 
-int InitStack(stack *stk, size_t capacity)
+Errors InitStack(stack *stk, size_t capacity)
 {
+    //TODO: POIZON
+    Errors err = OK;
     if (!stk) return NULL_PTR;
 
     stk->capacity = capacity;
@@ -90,6 +92,7 @@ int InitStack(stack *stk, size_t capacity)
     stk->data = (StackElem *) calloc(capacity+2, sizeof(StackElem));
 
     if (!stk->data) return MEMORY_ERROR;
+    //if (err = StackVerifier(stk)) return err;
 
     stk->data[0]          =  LEFT_PETUSHARA;
     stk->data[capacity+1] = RIGHT_PETUSHARA;
@@ -97,40 +100,46 @@ int InitStack(stack *stk, size_t capacity)
     stk->data++;
     stk->size = 0;
 
-    return OK;
+    return StackVerifier(stk);
 }
-
-int StackPush(stack *stk, StackElem value)
+//TODO ENUM PISHI VEZDE (ERRORS)
+Errors StackPush(stack *stk, StackElem value)
 {
-    if (!stk) return NULL_PTR;
+    Errors err = StackVerifier(stk);
+    if (err) return err;
 
-    int err = 0;
-    if(stk->size >= stk->capacity) err = StackResize(stk);
-
-    if (err > 0) return err;
+    if(stk->size >= stk->capacity) StackResize(stk);
 
     stk->data[stk->size++] = value;
 
-    return OK;
+    return StackVerifier(stk);
 }
 
 StackElem StackPop(stack *stk, int* err)
 {
-    if (!stk) *err = NULL_PTR;
-    if (*err == 0 && stk->size <= 0)
+    Errors error = StackVerifier(stk);
+    if (error)
     {
-        *err = STACK_UNDERFLOW;
-        return *err;
+        *err = error;
+        return error;
     }
+
     StackElem pop_elem = stk->data[--stk->size];
     stk->data[stk->size] = 0;
+    
+    if (error = StackVerifier(stk))
+    {
+        *err = error;
+        return error;
+    }
 
     return pop_elem;
 }
 
-int StackDestroy(stack *stk)
+Errors StackDestroy(stack *stk)
 {
-    if (!stk) return NULL_PTR;
+    Errors err = StackVerifier(stk);
+    if (err) return err;
 
     free(stk->data - 1);
     stk->data = NULL;
@@ -140,10 +149,10 @@ int StackDestroy(stack *stk)
     return OK;
 }
 
-int StackResize(stack *stk)
+Errors StackResize(stack *stk)
 {
-    if (!stk) return NULL_PTR;
-    if (stk->data[-1] != LEFT_PETUSHARA || stk->data[stk->capacity] != RIGHT_PETUSHARA) return KILLED_PETUSHARA;
+    Errors err = StackVerifier(stk);
+    if (err) return err;
 
     printf("Changed capacity from %d to ", stk->capacity);
     stk->data = (StackElem *) realloc(stk->data-1, (stk->capacity+2) * 2 * sizeof(StackElem));
@@ -158,7 +167,7 @@ int StackResize(stack *stk)
 
     stk->data++;
 
-    return OK;
+    return StackVerifier(stk);
 }
 
 int PrintError(int err)
@@ -187,13 +196,14 @@ int PrintError(int err)
     }
 }
 
-int ErrorCheck(stack *stk)
+Errors StackVerifier(stack *stk) //TODO: STACKVERIFIER VEZDE PIHAI EGO
 {
     if (!stk)                      return NULL_PTR;
     if (!stk->data)                return NULL_PTR;
     if (!stk->capacity)            return NULL_PTR;
     if (stk->size > stk->capacity) return MEMORY_ERROR;
-    if (stk->size <= 0)            return STACK_UNDERFLOW;
+    if (stk->size < 0 ||
+        stk->size > MAX_CAPACITY)  return STACK_UNDERFLOW;
     if (stk->data[-1] != LEFT_PETUSHARA || 
     stk->data[stk->capacity] != RIGHT_PETUSHARA) return KILLED_PETUSHARA;
 
