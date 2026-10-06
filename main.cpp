@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 
 typedef double StackElem;
 #define STACK_ELEM_FMT "%lg"
@@ -11,6 +12,8 @@ typedef double StackElem;
 
 #define  LEFT_PETUSHARA 3802
 #define RIGHT_PETUSHARA 3565
+
+#define POISON 671488
 
 enum Errors
 {
@@ -81,8 +84,7 @@ int main()
 
 Errors InitStack(stack *stk, size_t capacity)
 {
-    //TODO: POIZON
-    Errors err = OK;
+    //TODO POIZON 
     if (!stk) return NULL_PTR;
 
     stk->capacity = capacity;
@@ -92,7 +94,8 @@ Errors InitStack(stack *stk, size_t capacity)
     stk->data = (StackElem *) calloc(capacity+2, sizeof(StackElem));
 
     if (!stk->data) return MEMORY_ERROR;
-    //if (err = StackVerifier(stk)) return err;
+
+    for (size_t i = 0; i < capacity + 2; i++) stk->data[i] = POISON;
 
     stk->data[0]          =  LEFT_PETUSHARA;
     stk->data[capacity+1] = RIGHT_PETUSHARA;
@@ -125,7 +128,7 @@ StackElem StackPop(stack *stk, int* err)
     }
 
     StackElem pop_elem = stk->data[--stk->size];
-    stk->data[stk->size] = 0;
+    stk->data[stk->size] = POISON;
     
     if (error = StackVerifier(stk))
     {
@@ -159,13 +162,16 @@ Errors StackResize(stack *stk)
 
     if (!stk->data) return MEMORY_ERROR;
 
+    stk->data++;
+
+    for (size_t i = stk->capacity; i < stk->capacity*2; i++) stk->data[i] = POISON;
+
     stk->capacity*=2;
     printf("%d\n", stk->capacity);
 
-    stk->data[0]               =  LEFT_PETUSHARA;
-    stk->data[stk->capacity+1] = RIGHT_PETUSHARA;
+    stk->data[-1]            =  LEFT_PETUSHARA;
+    stk->data[stk->capacity] = RIGHT_PETUSHARA;
 
-    stk->data++;
 
     return StackVerifier(stk);
 }
@@ -195,8 +201,8 @@ int PrintError(int err)
             break;
     }
 }
-
-Errors StackVerifier(stack *stk) //TODO: STACKVERIFIER VEZDE PIHAI EGO
+//TODO STACKVERIFIER VEZDE PISHI EGO
+Errors StackVerifier(stack *stk)
 {
     if (!stk)                      return NULL_PTR;
     if (!stk->data)                return NULL_PTR;
