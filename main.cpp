@@ -8,6 +8,8 @@ typedef double StackElem;
 
 #define STACK_DUMP(stk) StackDump(&stk, __FILE__, __LINE__, __func__)
 
+#define InitStack(stk, capacity) InitStackInfo((stk), (capacity), __FILE__, __LINE__, __func__)
+
 #define MAX_CAPACITY 1000000
 
 #define  LEFT_PETUSHARA 3802
@@ -24,21 +26,29 @@ enum Errors
     KILLED_PETUSHARA = 4,
 };
 
-struct stack //TODO: ERROR_CODE, INFO EBOUT STACK
+struct StackInfo
+{
+    const char* file;
+    int         line;
+    const char* func;
+};
+
+struct stack //ERROR_CODE, INFO EBOUT STACK
 {
     size_t size;
     size_t capacity;
     StackElem *data;
 
-    StackElem *left_petushara;
-    StackElem *right_petushara;
+    Errors err_code;
+
+    struct StackInfo InitInfo;
 };
 
-Errors InitStack(stack *stk, size_t capacity);
+Errors InitStackInfo(stack *stk, size_t capacity, const char* file, int line, const char* func);
 
 Errors StackPush(stack *stk, StackElem value);
 
-StackElem StackPop(stack *stk, int* err);
+StackElem StackPop(stack *stk);
 
 Errors StackDestroy(stack *stk);
 
@@ -66,11 +76,11 @@ int main()
     // printf(STACK_ELEM_FMT "\n", StackPop(&stk, &err));
     StackPush(&stk, 67);
 
-    for (int i = 0; i<100; i++) StackPush(&stk, i);
+    for (int i = 0; i<20; i++) StackPush(&stk, i);
 
-    printf(STACK_ELEM_FMT "\n", StackPop(&stk, &err));
+    printf(STACK_ELEM_FMT "\n", StackPop(&stk));
     if(err > 0) PrintError(err);
-    printf(STACK_ELEM_FMT "\n", StackPop(&stk, &err));
+    printf(STACK_ELEM_FMT "\n", StackPop(&stk));
     if(err > 0) PrintError(err);
 
     err = StackVerifier(&stk);
@@ -82,7 +92,7 @@ int main()
 }
 
 
-Errors InitStack(stack *stk, size_t capacity)
+Errors InitStackInfo(stack *stk, size_t capacity, const char* file, int line, const char* func)
 {
     //TODO POIZON 
     if (!stk) return NULL_PTR;
@@ -103,13 +113,17 @@ Errors InitStack(stack *stk, size_t capacity)
     stk->data++;
     stk->size = 0;
 
+    stk->InitInfo.file = file;
+    stk->InitInfo.line = line;
+    stk->InitInfo.func = func;
+
     return StackVerifier(stk);
 }
 //TODO ENUM PISHI VEZDE (ERRORS)
 Errors StackPush(stack *stk, StackElem value)
 {
-    Errors err = StackVerifier(stk);
-    if (err) return err;
+    StackVerifier(stk);
+    if (stk->err_code) return stk->err_code;
 
     if(stk->size >= stk->capacity) StackResize(stk);
 
@@ -118,49 +132,41 @@ Errors StackPush(stack *stk, StackElem value)
     return StackVerifier(stk);
 }
 
-StackElem StackPop(stack *stk, int* err)
-{
-    Errors error = StackVerifier(stk);
-    if (error)
-    {
-        *err = error;
-        return error;
-    }
+StackElem StackPop(stack *stk)
+{ 
+    if (StackVerifier(stk)) return POISON;
 
     StackElem pop_elem = stk->data[--stk->size];
     stk->data[stk->size] = POISON;
     
-    if (error = StackVerifier(stk))
-    {
-        *err = error;
-        return error;
-    }
+    if (StackVerifier(stk)) return POISON;
 
     return pop_elem;
 }
 
 Errors StackDestroy(stack *stk)
 {
-    Errors err = StackVerifier(stk);
-    if (err) return err;
+    StackVerifier(stk);
+    if (stk->err_code) return stk->err_code;
 
     free(stk->data - 1);
     stk->data = NULL;
     stk->size = 0;
     stk->capacity = 0;
+    stk->err_code = OK;
 
     return OK;
 }
 
 Errors StackResize(stack *stk)
 {
-    Errors err = StackVerifier(stk);
-    if (err) return err;
+    StackVerifier(stk);
+    if (stk->err_code) return stk->err_code;
 
     printf("Changed capacity from %d to ", stk->capacity);
     stk->data = (StackElem *) realloc(stk->data-1, (stk->capacity+2) * 2 * sizeof(StackElem));
 
-    if (!stk->data) return MEMORY_ERROR;
+    if (!stk->data) return (stk->err_code = MEMORY_ERROR);
 
     stk->data++;
 
@@ -204,22 +210,24 @@ int PrintError(int err)
 //TODO STACKVERIFIER VEZDE PISHI EGO
 Errors StackVerifier(stack *stk)
 {
-    if (!stk)                      return NULL_PTR;
-    if (!stk->data)                return NULL_PTR;
-    if (!stk->capacity)            return NULL_PTR;
-    if (stk->size > stk->capacity) return MEMORY_ERROR;
+    if (!stk)                      return (stk->err_code = NULL_PTR);
+    if (stk->err_code)             return stk->err_code;
+    if (!stk->data)                return (stk->err_code = NULL_PTR);
+    if (!stk->capacity)            return (stk->err_code = NULL_PTR);
+    if (stk->size > stk->capacity) return (stk->err_code = MEMORY_ERROR);
     if (stk->size < 0 ||
-        stk->size > MAX_CAPACITY)  return STACK_UNDERFLOW;
+        stk->size > MAX_CAPACITY)  return (stk->err_code = STACK_UNDERFLOW);
     if (stk->data[-1] != LEFT_PETUSHARA || 
-    stk->data[stk->capacity] != RIGHT_PETUSHARA) return KILLED_PETUSHARA;
+    stk->data[stk->capacity] != RIGHT_PETUSHARA) return (stk->err_code = KILLED_PETUSHARA);
 
-    return OK;
+    return (stk->err_code = OK);
 }
 
 int StackDump(stack *stk, const char *file, int line, const char *func)
 {
     printf("\n=================== STACK DUMP ===================\n");
     printf("Called from: %s:%d  in  %s()\n", file, line, func);
+    printf("Created    : %s:%d  in  %s()\n", stk->InitInfo.file, stk->InitInfo.line, stk->InitInfo.func);
 
     if (!stk)
     {
@@ -232,6 +240,7 @@ int StackDump(stack *stk, const char *file, int line, const char *func)
     printf("  size        : %d\n", stk->size);
     printf("  capacity    : %d\n", stk->capacity);
     printf("  data ptr    : %p\n", stk->data);
+    printf("  error code  : %d\n", stk->err_code);
 
     printf("  --- checks ---\n");
     if (!stk->data)
@@ -251,7 +260,7 @@ int StackDump(stack *stk, const char *file, int line, const char *func)
         printf("  [i] stack is empty\n");
 
     if (stk->data[-1] != LEFT_PETUSHARA)
-        printf("  [!] LEFT PETUSHARA IS SPOILED");
+        printf("  [!] LEFT  PETUSHARA IS SPOILED");
 
     if (stk->data[stk->capacity] != RIGHT_PETUSHARA)
         printf("  [!] RIGHT PETUSHARA IS SPOILED");
